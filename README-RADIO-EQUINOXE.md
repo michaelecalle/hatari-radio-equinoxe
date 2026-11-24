@@ -30,7 +30,7 @@ GNU General Public License (Hatari and EmuTOS are GPL software).
 | `src/sdl/gui_event.c`, `src/includes/gui_event.h` | Touch screens (iPad): `GuiEvent_TouchMouseMove()` and `GuiEvent_TouchMouseButton()`, called by the page, which turns finger gestures into mouse movement and clicks. |
 | `src/sdl/statusbar.c` | Reports the floppy drive LED to the page (`Module.onFloppyLed`). |
 | `src/emscripten.js` | Default command line (Atari ST, 1 MB, no status bar, borders). Disk images are added at boot by the page. |
-| `src/emscripten_shell.html` | Minimal page (canvas only) driven by the parent page through `postMessage`: boot with disk images, add/insert/eject disks, read back the save disk, keyboard focus, mouse capture, touch commands (pointer movement, buttons, Atari keys via `IKBD_PressSTKey`). |
+| `src/emscripten_shell.html` | Minimal page (canvas only) driven by the parent page through `postMessage`: boot with disk images, add/insert/eject disks, read back the save disk, keyboard focus, mouse capture, touch commands (pointer movement, buttons, Atari keys via `IKBD_PressSTKey`), sound played through the parent page's `AudioContext` (already unlocked by the user's tap — Safari counts gestures separately for the page and the iframe). |
 
 ## How to build
 

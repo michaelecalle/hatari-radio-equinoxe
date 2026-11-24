@@ -72,7 +72,15 @@
   }
 
   var canvas = document.getElementById("canvas");
+  // Son (24/11/2026) : la page fournit son circuit audio (AudioContext),
+  // déjà débloqué par la tape sur l'interrupteur. Safari (iPad) compte les
+  // gestes séparément pour la page et pour cet iframe : avec son propre
+  // circuit, le jeu resterait muet jusqu'à la première tape sur l'écran.
+  // SDL utilise SDL2.audioContext s'il existe déjà.
+  var sharedAudio = null;
+  try { sharedAudio = (window.parent !== window && window.parent.__atariAudioContext) || null; } catch (e) {}
   var Module = {
+    SDL2: sharedAudio ? { audioContext: sharedAudio } : undefined,
     // Le démarrage attend la configuration envoyée par la page parente.
     preRun: [function () {
       if (bootConfig) { applyBoot(bootConfig); return; }
