@@ -320,6 +320,13 @@ void Timing_WaitOnVbl(void)
 			Timing_Delay(nDelay<10000 ? nDelay-1000 : 9000);
 	}
 
+#ifdef EMSCRIPTEN
+	/* Radio Equinoxe (23/11/2026) : dans le navigateur, TOUJOURS rendre la
+	 * main une fois par VBL (sinon, emulation plus lente que le temps reel ->
+	 * aucune pause -> page figee, souris et clavier jamais traites). */
+	emscripten_sleep(nDelay > 1000 ? (uint32_t)(nDelay / 1000) : 0);
+	nDelay = 0;
+#endif
 	/* Now busy-wait for the right tick: */
 	while (nDelay > 0)
 	{

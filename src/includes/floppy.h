@@ -64,6 +64,9 @@ extern const char* Floppy_SetDiskFileName(int Drive, const char *pszFileName, co
 extern int Floppy_DriveTransitionUpdateState ( int Drive );
 extern bool Floppy_InsertDiskIntoDrive(int Drive);
 extern bool Floppy_EjectDiskFromDrive(int Drive);
+#ifdef EMSCRIPTEN
+extern bool Floppy_FlushDisk(int Drive);
+#endif
 extern void Floppy_FindDiskDetails(const uint8_t *pBuffer, int nImageBytes, uint16_t *pnSectorsPerTrack, uint16_t *pnSides);
 extern bool Floppy_ReadSectors(int Drive, uint8_t **pBuffer, uint16_t Sector, uint16_t Track, uint16_t Side, short Count, int *pnSectorsPerTrack, int *pSectorSize);
 extern bool Floppy_WriteSectors(int Drive, uint8_t *pBuffer, uint16_t Sector, uint16_t Track, uint16_t Side, short Count, int *pnSectorsPerTrack, int *pSectorSize);

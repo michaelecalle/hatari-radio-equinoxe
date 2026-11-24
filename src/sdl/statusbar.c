@@ -35,6 +35,9 @@
 const char Statusbar_fileid[] = "Hatari statusbar.c";
 
 #include <assert.h>
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
 #include "main.h"
 #include "configuration.h"
 #include "screenSnapShot.h"
@@ -211,6 +214,11 @@ void Statusbar_EnableHDLed(drive_led_t state)
 void Statusbar_SetFloppyLed(drive_index_t drive, drive_led_t state)
 {
 	assert(drive == DRIVE_LED_A || drive == DRIVE_LED_B);
+#ifdef EMSCRIPTEN
+	/* Radio Equinoxe : signale le voyant du lecteur a la page (decor SF314) */
+	if ((Led[drive].state != LED_STATE_OFF) != (state != LED_STATE_OFF))
+		EM_ASM({ if (Module.onFloppyLed) Module.onFloppyLed($0, $1); }, drive, state != LED_STATE_OFF);
+#endif
 	Led[drive].state = state;
 }
 

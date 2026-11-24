@@ -652,6 +652,31 @@ bool Floppy_InsertDiskIntoDrive(int Drive)
 
 
 /*-----------------------------------------------------------------------*/
+#ifdef EMSCRIPTEN
+/**
+ * Radio Equinoxe (23/11/2026) : write a changed .ST/.MSA image back to its
+ * file WITHOUT ejecting it (the web page then keeps the game save disk in
+ * the browser). Same save code as Floppy_EjectDiskFromDrive().
+ * Return true if the file was written.
+ */
+bool Floppy_FlushDisk(int Drive)
+{
+	char *psFileName = EmulationDrives[Drive].sFileName;
+	bool bSaved = false;
+
+	if (!EmulationDrives[Drive].bDiskInserted || !EmulationDrives[Drive].bContentsChanged
+	    || !EmulationDrives[Drive].bOKToSave)
+		return false;
+	if (MSA_FileNameIsMSA(psFileName, true))
+		bSaved = MSA_WriteDisk(Drive, psFileName, EmulationDrives[Drive].pBuffer, EmulationDrives[Drive].nImageBytes);
+	else if (ST_FileNameIsST(psFileName, true))
+		bSaved = ST_WriteDisk(Drive, psFileName, EmulationDrives[Drive].pBuffer, EmulationDrives[Drive].nImageBytes);
+	if (bSaved)
+		EmulationDrives[Drive].bContentsChanged = false;
+	return bSaved;
+}
+#endif
+
 /**
  * Eject disk from floppy drive, save contents back to PCs hard-drive if
  * they have been changed.

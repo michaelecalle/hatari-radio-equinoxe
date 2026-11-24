@@ -1,153 +1,142 @@
-<!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <title>Hatari online</title>
-    <style>
-      body { margin: 0; padding: 0 }
-      .emscripten { padding-right: 0; /* margin-left: auto; margin-right: auto; */ display: block; }
-      div.emscripten { text-align: center; }
-      div.emscripten_border { border: 1px solid black; }
-      /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-      canvas.emscripten { border: 0px none; background-color: black; }
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atari ST</title>
+<!-- Radio Equinoxe (23/11/2026) : page de l'émulateur, chargée dans un iframe
+     derrière le verre du moniteur de la page Captain Blood. Écran seul.
+     Dialogue avec la page parente par postMessage :
+       envoie  { source: "hatari", type: "hello" }       (prêt à recevoir "boot")
+               { source: "hatari", type: "ready" }       (émulateur lancé)
+               { source: "hatari", type: "led", drive: 0|1, on: bool }
+               { source: "hatari", type: "mouse", captured: bool }
+               { source: "hatari", type: "diskData", index: n, changed: bool, data }  (réponse à readDisk)
+       reçoit  { target: "hatari", type: "boot", disks: [{ name, data }], insert: n|null, autostart: "A:\\X.PRG"|null }
+               { target: "hatari", type: "addDisks", disks: [{ name, data }] }  (ajout à la suite)
+               { target: "hatari", type: "insert", index: n }   (changer de disquette)
+               { target: "hatari", type: "eject" }
+               { target: "hatari", type: "readDisk", index: n, inDrive: bool }
+                 (relit le fichier d'une disquette ; si elle est dans le lecteur,
+                  l'écrit d'abord sans l'éjecter — disquette de sauvegarde du jeu)
+               { target: "hatari", type: "focus" }   (rend le clavier à l'Atari)
+     Les disquettes arrivent en mémoire (ArrayBuffer) : rien ne quitte l'appareil. -->
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    cursor: pointer;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+<script>
+  function tell(msg) {
+    msg.source = "hatari";
+    if (window.parent !== window) window.parent.postMessage(msg, "*");
+  }
 
-      .spinner {
-        height: 30px;
-        width: 30px;
-        margin: 0px;
-        margin-top: 20px;
-        margin-left: 20px;
-        display: inline-block;
-        vertical-align: top;
-        -webkit-animation: rotation .8s linear infinite;
-        -moz-animation: rotation .8s linear infinite;
-        -o-animation: rotation .8s linear infinite;
-        animation: rotation 0.8s linear infinite;
-        border-left: 5px solid #ebebeb;
-        border-right: 5px solid #ebebeb;
-        border-bottom: 5px solid #ebebeb;
-        border-top: 5px solid #787878;
-        border-radius: 100%;
-        background-color: #bdd72e
-      }
-      @-webkit-keyframes rotation {
-        from {-webkit-transform: rotate(0deg);}
-        to {-webkit-transform: rotate(360deg);}
-      }
-      @-moz-keyframes rotation{
-        from {-moz-transform: rotate(0deg);}
-        to {-moz-transform: rotate(360deg);}
-      }
-      @-o-keyframes rotation{
-        from {-o-transform: rotate(0deg);}
-        to {-o-transform: rotate(360deg);}
-      }
-      @keyframes rotation{
-        from {transform: rotate(0deg);}
-        to {transform: rotate(360deg);}
-      }
-      #status {
-        display: inline-block;
-        vertical-align: top;
-        margin-top: 30px;
-        margin-left: 20px;
-        font-weight: 700;
-        color: #787878
-      }
-      #progress {
-        height: 20px;
-        width: 300px
-      }
-      #controls {
-        display: inline-block;
-        float: right;
-        vertical-align: top;
-        margin-top: 2px; /* 30px; */
-        margin-right: 20px
-      }
-      #output {
-        width: 100%;
-        height: 200px;
-        margin: 0 auto;
-        margin-top: 10px;
-        border-left: 0;
-        border-right: 0px;
-        padding-left: 0;
-        padding-right: 0;
-        display: block;
-        background-color: #ffffff;
-        color: #000000;
-        font-family: 'Lucida Console',Monaco,monospace;
-        outline: 0
-     }
-    </style>
-  </head>
-  <body>
-    <span style="font-size:110%"> Hatari - the Atari ST/STE/TT/Falcon emulator</span>
-    <div class="spinner" id="spinner"></div>
-    <div class="emscripten" id="status">Downloading...</div>
-    <span id="controls">
-      <span>
-        <input type="checkbox" id="resize">Resize canvas
-      </span>
-      <span>
-        <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer    
-      </span>
-      <span>
-        <input type="button" value="Fullscreen"
-         onclick='Module.requestFullscreen(document.getElementById("pointerLock").checked,document.getElementById("resize").checked)'>
-      </span>
-    </span>
-    <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden></progress>
-    </div>
-    <div class=emscripten_border>
-      <canvas class=emscripten id=canvas oncontextmenu=event.preventDefault() tabindex=-1>
-      </canvas>
-    </div>
-    <textarea id="output" rows="1"></textarea>
-    <script>
-      var statusElement = document.getElementById('status');
-      var progressElement = document.getElementById('progress');
-      var spinnerElement = document.getElementById('spinner');
-      var Module = {
-        preRun: [],
-        postRun: [],
-        print: function() {
-          var e = document.getElementById("output");
-          return e && (e.value=""),function(t) {
-            arguments.length>1&&(t=Array.prototype.slice.call(arguments).join(" ")),console.log(t),e&&(e.value+=t+"\n",e.scrollTop=e.scrollHeight)
-          }
-        }(),
-        canvas: function() {
-          var e=document.getElementById("canvas");
-          return e.addEventListener("webglcontextlost",(function(e){
-            alert("WebGL context lost. You will need to reload the page."),e.preventDefault()
-          }),!1),e
-        }(),
-        setStatus: function(e) {
-          if(Module.setStatus.last||(Module.setStatus.last={
-            time:Date.now(),text:""}
-                                    ),e!==Module.setStatus.last.text){
-            var t=e.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/),n=Date.now();
-            t&&n-Module.setStatus.last.time<30||(Module.setStatus.last.time=n,Module.setStatus.last.text=e,t?(e=t[1],progressElement.value=100*parseInt(t[2]),progressElement.max=100*parseInt(t[4]),progressElement.hidden=!1,spinnerElement.hidden=!1):(progressElement.value=null,progressElement.max=null,progressElement.hidden=!0,e||(spinnerElement.style.display="none")),statusElement.innerHTML=e)
-          }
-        },
-        totalDependencies: 0,
-        monitorRunDependencies: function(e) {
-          this.totalDependencies=Math.max(this.totalDependencies,e);
-          Module.setStatus(e?"Preparing... ("+(this.totalDependencies-e)+"/"+this.totalDependencies+")":"All downloads complete.")
-        }
+  var DISK_DIR = "/disks";
+  var diskPaths = [];
+  var bootConfig = null;
+  var bootWaiter = null;
+
+  function diskPath(i, name) {
+    var ext = (String(name).match(/\.([a-z0-9]{2,3})$/i) || [, "st"])[1].toLowerCase();
+    return DISK_DIR + "/disk" + (i + 1) + "." + ext;
+  }
+
+  // Ajoute des disquettes à la suite de celles déjà connues (index = ordre
+  // d'arrivée, identique à la liste de la page parente).
+  function writeDisks(disks) {
+    try { Module.FS.mkdir(DISK_DIR); } catch (e) {}
+    disks.forEach(function (d) {
+      var p = diskPath(diskPaths.length, d.name);
+      Module.FS.writeFile(p, new Uint8Array(d.data));
+      diskPaths.push(p);
+    });
+  }
+
+  function applyBoot(cfg) {
+    writeDisks(cfg.disks || []);
+    var args = Module["arguments"];   // même tableau que celui lu par main()
+    if (cfg.insert != null && diskPaths[cfg.insert]) {
+      args.push("--disk-a", diskPaths[cfg.insert]);
+      if (cfg.autostart) args.push("--auto", cfg.autostart);
+    }
+  }
+
+  var canvas = document.getElementById("canvas");
+  var Module = {
+    // Le démarrage attend la configuration envoyée par la page parente.
+    preRun: [function () {
+      if (bootConfig) { applyBoot(bootConfig); return; }
+      Module.addRunDependency("boot");
+      bootWaiter = function (cfg) {
+        applyBoot(cfg);
+        Module.removeRunDependency("boot");
       };
-      Module.setStatus('Downloading...');
-      window.onerror = function() {
-        Module.setStatus('Exception thrown, see JavaScript console');
-        spinnerElement.style.display = 'none';
-        Module.setStatus = function(e){
-          e && console.error("[post-exception status] "+e)
-        };
-      };
-    </script>
-    {{{ SCRIPT }}}
-  </body>
+    }],
+    postRun: [function () { tell({ type: "ready" }); }],
+    print: function (t) { console.log(t); },
+    printErr: function (t) { console.warn(t); },
+    canvas: canvas,
+    setStatus: function () {},
+    onFloppyLed: function (drive, on) { tell({ type: "led", drive: drive, on: !!on }); },
+  };
+
+  function ejectA() {
+    Module.ccall("Floppy_EjectDiskFromDrive", "number", ["number"], [0]);
+  }
+
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (!m || m.target !== "hatari") return;
+    if (m.type === "boot" && !bootConfig) {
+      bootConfig = m;
+      if (bootWaiter) bootWaiter(m);
+      return;
+    }
+    if (typeof Module.ccall !== "function") return;
+    if (m.type === "addDisks" && Array.isArray(m.disks)) {
+      writeDisks(m.disks);
+    } else if (m.type === "insert" && diskPaths[m.index]) {
+      ejectA();
+      Module.ccall("Floppy_SetDiskFileName", "number", ["number", "string", "string"], [0, diskPaths[m.index], null]);
+      Module.ccall("Floppy_InsertDiskIntoDrive", "number", ["number"], [0]);
+    } else if (m.type === "eject") {
+      ejectA();
+    } else if (m.type === "readDisk" && diskPaths[m.index]) {
+      var changed = m.inDrive ? !!Module.ccall("Floppy_FlushDisk", "number", ["number"], [0]) : true;
+      var bytes = Module.FS.readFile(diskPaths[m.index]);
+      var copy = bytes.slice().buffer;
+      window.parent.postMessage({ source: "hatari", type: "diskData", index: m.index, changed: changed, data: copy }, "*", [copy]);
+    } else if (m.type === "focus") {
+      canvas.focus();
+    }
+  });
+
+  // Souris : un clic dans l'écran la capture pour l'Atari ; Échap la rend
+  // (géré par le navigateur). Échap n'est PAS transmis à l'Atari.
+  canvas.addEventListener("click", function () {
+    canvas.focus();
+    if (document.pointerLockElement !== canvas && canvas.requestPointerLock) canvas.requestPointerLock();
+  });
+  document.addEventListener("pointerlockchange", function () {
+    tell({ type: "mouse", captured: document.pointerLockElement === canvas });
+  });
+  ["keydown", "keyup"].forEach(function (ev) {
+    window.addEventListener(ev, function (e) {
+      if (e.key === "Escape") e.stopImmediatePropagation();
+    }, true);
+  });
+
+  tell({ type: "hello" });
+</script>
+{{{ SCRIPT }}}
+</body>
 </html>

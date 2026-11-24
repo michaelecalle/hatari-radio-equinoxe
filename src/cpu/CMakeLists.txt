@@ -16,7 +16,36 @@ set(WINUAE_SRCS cpudefs.c cpummu.c cpummu030.c debug.c disasm.c newcpu_common.c 
 # Unfortunately we've got to specify the rules for the generated files twice,
 # once for cross compiling (with calling the host cc directly) and once
 # for native compiling so that the rules also work for non-Unix environments...
-if(CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING AND EMSCRIPTEN)
+
+	# Radio Equinoxe (23/11/2026) : pas de compilateur hote sous Windows ->
+	# les generateurs sont compiles avec emcc et executes par node.
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build68k.js
+		COMMAND ${CMAKE_C_COMPILER} -O1 -sNODERAWFS=1 -sEXIT_RUNTIME=1 -I${CMAKE_CURRENT_SOURCE_DIR}
+			   ${CMAKE_CURRENT_SOURCE_DIR}/build68k.c
+			   ${CMAKE_CURRENT_SOURCE_DIR}/writelog.c
+			   -o ${CMAKE_CURRENT_BINARY_DIR}/build68k.js
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/build68k.c)
+
+	add_custom_command(OUTPUT cpudefs.c
+		COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} build68k.js < ${CMAKE_CURRENT_SOURCE_DIR}/table68k >cpudefs.c
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/table68k
+			${CMAKE_CURRENT_BINARY_DIR}/build68k.js)
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gencpu.js
+		COMMAND ${CMAKE_C_COMPILER} -O1 -sNODERAWFS=1 -sEXIT_RUNTIME=1 -sSTACK_SIZE=8388608 -I${CMAKE_CURRENT_SOURCE_DIR}
+			   cpudefs.c ${CMAKE_CURRENT_SOURCE_DIR}/gencpu.c
+			   ${CMAKE_CURRENT_SOURCE_DIR}/readcpu.c
+			   -o ${CMAKE_CURRENT_BINARY_DIR}/gencpu.js
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/gencpu.c
+			${CMAKE_CURRENT_SOURCE_DIR}/readcpu.c cpudefs.c)
+
+	add_custom_command(OUTPUT ${CPUEMU_SRCS}
+		COMMAND ${CMAKE_CROSSCOMPILING_EMULATOR} gencpu.js
+		DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/gencpu.js)
+
+elseif(CMAKE_CROSSCOMPILING)
+
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build68k
 		COMMAND cc -I${CMAKE_CURRENT_SOURCE_DIR}
