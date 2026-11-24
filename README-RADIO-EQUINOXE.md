@@ -8,12 +8,15 @@ in the browser (compiled to WebAssembly with Emscripten). It is published to com
 GNU General Public License (Hatari and EmuTOS are GPL software).
 
 - **Base:** upstream Hatari 2.6.1-devel, commit `96c7228` of <https://github.com/hatari/hatari>.
-- **Our changes:** the second commit of this repository, on top of an unmodified snapshot of the
-  upstream tree (first commit) — `git show HEAD` shows exactly what was changed.
+- **Our changes:** the commits after the first one, which is an unmodified snapshot of the
+  upstream tree — `git diff HEAD~2 HEAD~1` shows exactly what was changed in Hatari itself; the
+  last commit adds the SPS Decoder Library sources (`third_party/capsimg/`).
 - **Operating system:** EmuTOS 1.4, 192 KB UK image (`etos192uk.img`), **unmodified**. Its complete
   source code is included in [`third_party/emutos/`](third_party/emutos/).
 - **No game is distributed.** Visitors load their own disk images; they stay in the browser.
-- The published build does **not** include the SPS / CAPSImage library (no `.ipf` support).
+- **`.ipf` disk images** are read with the **SPS Decoder Library (CAPSImage)**, used with the
+  permission of KryoFlux GmbH (non-commercial use). Its source code, the small `config.h` added to
+  compile it with Emscripten and the build script are in [`third_party/capsimg/`](third_party/capsimg/).
 
 ## What was changed
 
@@ -37,18 +40,27 @@ Tested on Windows with Git Bash; the same steps work on Linux/macOS.
 2. Put the EmuTOS 192 KB UK image in the build directory as `files/tos.img`
    (from the official EmuTOS 1.4 release, `emutos-192k-1.4.zip`, file `etos192uk.img`;
    or build it from `third_party/emutos/`).
-3. Configure and build, **without** CAPSImage:
+3. Build the SPS Decoder Library (CAPSImage), for `.ipf` support:
+
+   ```sh
+   sh third_party/capsimg/build-wasm.sh /path/to/capsimg-wasm
+   ```
+
+4. Configure and build Hatari with it:
 
    ```sh
    mkdir build && cd build
    mkdir files && cp /path/to/etos192uk.img files/tos.img
-   emcmake cmake .. -G Ninja \
-     -DCAPSIMAGE_INCLUDE_DIR=CAPSIMAGE_INCLUDE_DIR-NOTFOUND \
-     -DCAPSIMAGE_LIBRARY=CAPSIMAGE_LIBRARY-NOTFOUND
+   emcmake cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release \
+     -DCAPSIMAGE_INCLUDE_DIR=/path/to/capsimg-wasm/include \
+     -DCAPSIMAGE_LIBRARY=/path/to/capsimg-wasm/lib/libcapsimage.a
    cmake --build . --target hatari
    ```
 
-4. The result is in `build/src/`: `hatari.html`, `hatari.js`, `hatari.wasm`, `hatari.data`.
+   Without `.ipf` support: skip step 3 and pass `CAPSIMAGE_INCLUDE_DIR-NOTFOUND` and
+   `CAPSIMAGE_LIBRARY-NOTFOUND` instead.
+
+5. The result is in `build/src/`: `hatari.html`, `hatari.js`, `hatari.wasm`, `hatari.data`.
    It needs a browser with JSPI (WebAssembly JavaScript Promise Integration) support, such as
    recent Chrome or Firefox.
 
@@ -57,6 +69,13 @@ Tested on Windows with Git Bash; the same steps work on Linux/macOS.
 - **Hatari:** GNU GPL version 2 or later — see [`gpl.txt`](gpl.txt) and [`readme.txt`](readme.txt).
 - **EmuTOS:** GNU GPL version 2 or later — see `third_party/emutos/` (`doc/license.txt` in the archive).
 - Emscripten ports: **SDL2** and **zlib** (zlib licence).
+- **SPS Decoder Library (CAPSImage):** SPS DECODER LIBRARY Copyright (c) 2001-2014 by István Fábián
+  under exclusive licence to KryoFlux Products & Services Ltd. **Non-commercial use only**; used here
+  with the permission of KryoFlux GmbH. Copyright notice, licence conditions and disclaimer:
+  [`third_party/capsimg/LICENCE.txt`](third_party/capsimg/LICENCE.txt). Source: unmodified
+  [FrodeSolheim/capsimg](https://github.com/FrodeSolheim/capsimg), commit `ed4cb09`, plus
+  `CAPSImg/config.h` (two lines) and `build-wasm.sh`. Hatari explicitly allows being used with it
+  (see `readme.txt`, section 3.3).
 
 ---
 
@@ -67,9 +86,14 @@ utilisé dans le navigateur sur la page « Captain Blood » du site de Radio Éq
 pour respecter la licence GNU GPL d'Hatari et d'EmuTOS.
 
 - Base : Hatari 2.6.1-devel, commit `96c7228` du dépôt officiel (1er commit, copie exacte) ; nos
-  modifications forment le 2e commit (détail dans le tableau ci-dessus).
+  modifications d'Hatari forment le 2e commit (détail dans le tableau ci-dessus), le 3e ajoute
+  les sources de la bibliothèque SPS.
 - Système : EmuTOS 1.4 (image 192 Ko anglaise), **non modifié** ; son code source complet est dans
   `third_party/emutos/`.
 - **Aucun jeu n'est fourni** : le visiteur charge ses propres images de disquette, qui restent dans
   son navigateur.
-- La version publiée n'inclut **pas** la bibliothèque SPS / CAPSImage (pas de lecture des `.ipf`).
+- Lecture des images **`.ipf`** : bibliothèque **SPS Decoder Library (CAPSImage)**, utilisée avec
+  l'accord de KryoFlux GmbH (usage non commercial uniquement). Ses sources, le petit `config.h`
+  ajouté pour la compiler avec Emscripten et le script de compilation sont dans
+  `third_party/capsimg/` ; licence, conditions et clause de non-responsabilité dans
+  `third_party/capsimg/LICENCE.txt`.
