@@ -1,0 +1,39 @@
+/*
+  Hatari - floppy_ipf.h
+
+  This file is distributed under the GNU General Public License, version 2 or at
+  your option any later version. Read the file gpl.txt for details.
+*/
+
+extern bool bUseCapsLib;
+
+extern void	IPF_MemorySnapShot_Capture(bool bSave);
+extern bool	IPF_FileNameIsIPF(const char *pszFileName, bool bAllowGZ);
+extern uint8_t	*IPF_ReadDisk(int Drive, const char *pszFileName, long *pImageSize, int *pImageType);
+extern bool	IPF_WriteDisk(int Drive, const char *pszFileName, uint8_t *pBuffer, int ImageSize);
+
+extern bool	IPF_Init ( void );
+extern void	IPF_Exit ( void );
+extern bool	IPF_Insert ( int Drive , uint8_t *pImageBuffer , long ImageSize );
+extern bool	IPF_Eject ( int Drive );
+
+extern int	FDC_GetBytesPerTrack_IPF ( uint8_t Drive , uint8_t Track , uint8_t Side );
+extern uint32_t FDC_GetCyclesPerRev_FdcCycles_IPF ( uint8_t Drive , uint8_t Track , uint8_t Side );
+
+bool IPF_Caps_Init(void);
+void IPF_Caps_Exit(void);
+bool IPF_Caps_Insert(int Drive, uint8_t *pImageBuffer, long ImageSize);
+bool IPF_Caps_Eject(int Drive);
+void IPF_Caps_Reset(bool bCold);
+void IPF_Caps_Emulate(void);
+void IPF_Caps_Drive_SetEnable(int Drive, bool value);
+void IPF_Caps_Drive_SetDoubleSided(int Drive, bool value);
+void IPF_Caps_SetDriveSide(uint8_t io_porta_old, uint8_t io_porta_new);
+void IPF_Caps_FDC_WriteReg(uint8_t Reg, uint8_t Byte);
+void IPF_Caps_FDC_StatusBar(uint8_t *pCommand, uint8_t *pHead, uint8_t *pTrack,
+                            uint8_t *pSector , uint8_t *pSide);
+
+uint8_t IPF_Caps_FDC_ReadReg(uint8_t Reg);
+
+uint8_t *IPF_Caps_ReadDisk(int Drive, const char *pszFileName, long *pImageSize, int *pImageType);
+void IPF_Caps_MemorySnapShot_Capture(bool bSave);
