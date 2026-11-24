@@ -44,6 +44,7 @@
   var diskPaths = [];
   var bootConfig = null;
   var bootWaiter = null;
+  var touchX = 0, touchY = 0; // reste des déplacements tactiles (fractions de pixel)
 
   function diskPath(i, name) {
     var ext = (String(name).match(/\.([a-z0-9]{2,3})$/i) || [, "st"])[1].toLowerCase();
@@ -117,6 +118,21 @@
       window.parent.postMessage({ source: "hatari", type: "diskData", index: m.index, changed: changed, data: copy }, "*", [copy]);
     } else if (m.type === "focus") {
       canvas.focus();
+    } else if (m.type === "touchMove") {
+      // Écran tactile (24/11/2026) : déplacement en pixels CSS de l'iframe,
+      // converti en pixels de l'écran SDL ; les fractions sont conservées.
+      var r = canvas.getBoundingClientRect();
+      touchX += (Number(m.dx) || 0) * canvas.width / (r.width || canvas.width);
+      touchY += (Number(m.dy) || 0) * canvas.height / (r.height || canvas.height);
+      var ix = Math.trunc(touchX), iy = Math.trunc(touchY);
+      touchX -= ix;
+      touchY -= iy;
+      if (ix || iy) Module.ccall("GuiEvent_TouchMouseMove", null, ["number", "number"], [ix, iy]);
+    } else if (m.type === "touchButton") {
+      Module.ccall("GuiEvent_TouchMouseButton", null, ["number", "number"], [m.right ? 1 : 0, m.down ? 1 : 0]);
+    } else if (m.type === "key" && typeof m.code === "number") {
+      // Touche du clavier Atari dessiné sur la page : code clavier du ST.
+      Module.ccall("IKBD_PressSTKey", null, ["number", "number"], [m.code & 0x7f, m.down ? 1 : 0]);
     }
   });
 

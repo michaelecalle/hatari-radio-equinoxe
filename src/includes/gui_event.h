@@ -9,5 +9,9 @@
 
 void GuiEvent_WarpMouse(int x, int y, bool restore);
 void GuiEvent_EventHandler(void);
+#ifdef EMSCRIPTEN
+void GuiEvent_TouchMouseMove(int dx, int dy);
+void GuiEvent_TouchMouseButton(int right, int down);
+#endif
 
 #endif

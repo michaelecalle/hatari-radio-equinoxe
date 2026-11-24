@@ -340,3 +340,35 @@ void GuiEvent_EventHandler(void)
 		}
 	} while (bContinueProcessing || !(bEmulationActive || bQuitProgram));
 }
+
+#ifdef EMSCRIPTEN
+/*
+ * Radio Équinoxe (24/11/2026) : commandes tactiles (iPad) envoyées par la
+ * page qui héberge l'émulateur. Sur écran tactile, la page capte les gestes
+ * (l'écran de l'Atari sert de pavé tactile) et les transmet ici :
+ * déplacement en pixels de l'écran SDL (même traitement qu'un mouvement de
+ * souris), boutons gauche/droit. Le clavier passe par IKBD_PressSTKey.
+ */
+void GuiEvent_TouchMouseMove(int dx, int dy)
+{
+	GuiEvent_HandleMouseMotion(dx, dy);
+}
+
+void GuiEvent_TouchMouseButton(int right, int down)
+{
+	if (right)
+	{
+		if (down)
+			Keyboard.bRButtonDown |= BUTTON_MOUSE;
+		else
+			Keyboard.bRButtonDown &= ~BUTTON_MOUSE;
+	}
+	else
+	{
+		if (down)
+			Keyboard.bLButtonDown |= BUTTON_MOUSE;
+		else
+			Keyboard.bLButtonDown &= ~BUTTON_MOUSE;
+	}
+}
+#endif
